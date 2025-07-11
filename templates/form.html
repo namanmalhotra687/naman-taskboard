@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>➕ Create Task | Naman TaskBoard</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    body {
+      background: linear-gradient(135deg, #1f5a96, #132561);
+      min-height: 100vh;
+      color: #fff;
+    }
+    .card {
+      border: none;
+      border-radius: 1rem;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+      background-color: #ffffff;
+      color: #000;
+    }
+    .form-label {
+      font-weight: 600;
+    }
+    .btn-primary {
+      background-color: #ff004c;
+      border-color: #ff004c;
+    }
+    .btn-primary:hover {
+      background-color: #cc003c;
+      border-color: #cc003c;
+    }
+    .btn-outline-secondary {
+      color: #333;
+      border-color: #ccc;
+    }
+    .btn-outline-secondary:hover {
+      background-color: #eee;
+    }
+    .logout-bar {
+      position: absolute;
+      top: 20px;
+      right: 40px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container py-5 position-relative">
+    <div class="logout-bar">
+      <span class="text-light me-3">👤 {{ request.session.get('user', 'Guest') }}</span>
+      <a href="/logout" class="btn btn-sm btn-warning">🔒 Logout</a>
+    </div>
+
+    <div class="row justify-content-center">
+      <div class="col-md-8 col-lg-6">
+        <div class="card p-4">
+          <h3 class="text-center mb-4 text-primary">➕ Create New Task</h3>
+
+          <form method="post" action="/add">
+            <div class="mb-3">
+              <label for="title" class="form-label">📝 Title</label>
+              <input type="text" class="form-control" id="title" name="title" required>
+            </div>
+
+            <div class="mb-3">
+              <label for="description" class="form-label">📄 Description</label>
+              <textarea class="form-control" id="description" name="description" rows="3" required></textarea>
+            </div>
+
+            <div class="mb-3">
+              <label for="status" class="form-label">📌 Status</label>
+              <select class="form-select" id="status" name="status" required>
+                <option value="pending">Pending</option>
+                <option value="in-progress">In Progress</option>
+                <option value="completed">Completed</option>
+              </select>
+            </div>
+
+            <div class="mb-3">
+              <label for="deadline" class="form-label">📅 Deadline</label>
+              <input type="date" class="form-control" id="deadline" name="deadline" value="{{ current_date }}">
+            </div>
+
+            <div class="d-grid gap-2">
+              <button type="submit" class="btn btn-primary">💾 Save Task</button>
+              <a href="/view" class="btn btn-outline-secondary">📋 View Tasks</a>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

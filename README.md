@@ -1,0 +1,10 @@
+services:
+  - type: web
+    name: naman-taskboard
+    env: python
+    buildCommand: ""
+    startCommand: uvicorn main:app --host 0.0.0.0 --port 10000
+    plan: free
+    envVars:
+      - key: DATABASE_URL
+        value: sqlite:///./test.db

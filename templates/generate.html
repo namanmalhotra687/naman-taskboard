@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>🛠 Generate Task | Naman TaskBoard</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    body {
+      background: linear-gradient(to right, #f7f9fc, #e0f2f1);
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+    .card {
+      border-radius: 1rem;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.1);
+    }
+  </style>
+</head>
+<body>
+  <div class="container mt-5">
+    <div class="text-center mb-4">
+      <h2>🧠 Generate Task (MVP)</h2>
+      <p class="text-muted">Automatically generate a task by entering a keyword</p>
+    </div>
+
+    <div class="row justify-content-center">
+      <div class="col-md-6">
+        <form method="post" action="/generate" class="card p-4">
+          <div class="mb-3">
+            <label for="local_kw" class="form-label">Keyword (e.g., auth, login, API)</label>
+            <input type="text" class="form-control" name="local_kw" id="local_kw" required placeholder="Enter task topic">
+          </div>
+          <button type="submit" class="btn btn-success w-100">🚀 Generate Task</button>
+        </form>
+        <div class="text-center mt-3">
+          <a href="/view" class="btn btn-outline-primary">← Back to Tasks</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
