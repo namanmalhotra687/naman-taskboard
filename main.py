@@ -347,3 +347,28 @@ def auto_generate_task():
 scheduler = BackgroundScheduler()
 scheduler.add_job(auto_generate_task, "interval", minutes=10)  # Every 10 minutes
 scheduler.start()
+
+from apscheduler.schedulers.background import BackgroundScheduler
+from generator_logic import generate_task
+from model import SessionLocal, Item
+from datetime import date
+
+def scheduled_generate():
+    db = SessionLocal()
+    task_data = generate_task()
+    item = Item(
+        title=task_data["title"],
+        description=task_data["description"],
+        status="pending",
+        deadline=date.today(),
+        is_generated=True
+    )
+    db.add(item)
+    db.commit()
+    db.close()
+    print("✅ Auto-generated task added.")
+
+# Schedule it
+scheduler = BackgroundScheduler()
+scheduler.add_job(scheduled_generate, "interval", minutes=10)
+scheduler.start()
