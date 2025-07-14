@@ -1,16 +1,16 @@
-from fastapi import Request, Form
-from starlette.responses import RedirectResponse
-from model import SessionLocal, User
+from sqlalchemy.orm import Session
+from fastapi import Request
 
-def authenticate_user(db, username, password):
-    user = get_user_by_username(db, username)
-    if user and user.password == password:
-        return user
-    return None
+from model import User
 
+def authenticate_user(db: Session, username: str, password: str):
+    """Authenticate user with database"""
+    return db.query(User).filter(User.username == username, User.password == password).first()
 
-def login_user(request: Request, username: str):
-    request.session["user"] = username
+def login_user(request: Request, user: User):
+    """Login the user by setting session"""
+    request.session['user'] = user.username
 
 def logout_user(request: Request):
-    request.session.pop("user", None)
+    """Logout user by clearing session"""
+    request.session.pop('user', None)

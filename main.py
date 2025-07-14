@@ -14,19 +14,11 @@ from generator_logic import generate_task
 from auth import authenticate_user, login_user, logout_user
 from apscheduler.schedulers.background import BackgroundScheduler
 
-# Initialize app
 app = FastAPI()
-
-# Add session middleware
 app.add_middleware(SessionMiddleware, secret_key="your-secret-key")
-
-# Set up templates
 templates = Jinja2Templates(directory="templates")
-
-# Create DB tables
 Base.metadata.create_all(bind=engine)
 
-# Dependency
 def get_db():
     db = SessionLocal()
     try:
@@ -34,12 +26,10 @@ def get_db():
     finally:
         db.close()
 
-# HEAD route for Render health check
 @app.head("/")
 def root_head():
     return Response(status_code=200)
 
-# Redirect root to login
 @app.get("/", response_class=HTMLResponse)
 def read_root():
     return RedirectResponse(url="/login")
@@ -57,8 +47,7 @@ async def login(request: Request, db: Session = Depends(get_db)):
     if user:
         login_user(request, user)
         return RedirectResponse(url="/view", status_code=303)
-    else:
-        return templates.TemplateResponse("login.html", {"request": request, "error": "Invalid credentials"})
+    return templates.TemplateResponse("login.html", {"request": request, "error": "Invalid credentials"})
 
 @app.get("/logout")
 def logout(request: Request):
@@ -128,7 +117,6 @@ def generate_from_mvp(local_kw: str = Form(""), db: Session = Depends(get_db)):
     db.commit()
     return RedirectResponse(url="/view", status_code=302)
 
-# JSON API endpoints (optional)
 @app.post("/add-json")
 def add_json(item: ItemBase, db: Session = Depends(get_db)):
     new_item = Item(**item.dict())
@@ -146,7 +134,6 @@ def edit_json(item_id: int, item: ItemUpdate, db: Session = Depends(get_db)):
     db.commit()
     return {"message": "Task updated successfully"}
 
-# Scheduler (optional)
 def schedule_task():
     db = SessionLocal()
     generated = generate_task()
