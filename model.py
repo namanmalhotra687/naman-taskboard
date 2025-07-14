@@ -24,3 +24,11 @@ class User(Base):
     id = Column(Integer, primary_key=True, index=True)
     username = Column(String, unique=True)
     password = Column(String)
+
+from sqlalchemy import DateTime
+from datetime import datetime
+
+generated_at = Column(DateTime, default=None)
+
+
+tag = Column(String(50), default="General")

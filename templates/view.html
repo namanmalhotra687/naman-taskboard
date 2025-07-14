@@ -38,7 +38,6 @@
 <body>
 
 <div class="container mt-5">
-  <!-- 🔝 Header + Navigation -->
   <div class="d-flex justify-content-between align-items-center mb-4">
     <h2 class="text-dark">📋 Task List</h2>
     <div class="d-flex gap-2">
@@ -48,7 +47,6 @@
     </div>
   </div>
 
-  <!-- 🔎 Filters -->
   <form method="get" class="mb-3">
     <div class="row g-2">
       <div class="col-md-6">
@@ -68,7 +66,6 @@
     </div>
   </form>
 
-  <!-- ⚙️ Generate Task -->
   <form method="post" action="/generate" class="row g-2 mb-4">
     <div class="col-md-9">
       <input type="text" name="local_kw" class="form-control" placeholder="Enter keyword for auto task..." required>
@@ -78,7 +75,6 @@
     </div>
   </form>
 
-  <!-- 📋 Task Table -->
   <table class="table table-striped">
     <thead class="table-dark">
       <tr>
@@ -87,6 +83,7 @@
         <th>Description</th>
         <th>Status</th>
         <th>Deadline</th>
+        <th>Generated At</th>
         <th>Actions</th>
       </tr>
     </thead>
@@ -94,7 +91,12 @@
       {% for task in tasks %}
       <tr class="{% if task.status == 'completed' %}completed{% endif %}">
         <td>{{ task.id }}</td>
-        <td>{{ task.title }}</td>
+        <td>
+          {{ task.title }}
+          {% if task.generated %}
+            <span class="badge bg-info text-dark ms-2">⚙️ Auto</span>
+          {% endif %}
+        </td>
         <td>{{ task.description }}</td>
         <td>
           {% if task.status == 'completed' %}
@@ -106,6 +108,9 @@
           {% endif %}
         </td>
         <td>{{ task.deadline }}</td>
+        <td>
+          {{ task.generated_at.strftime('%Y-%m-%d %H:%M') if task.generated_at }}
+        </td>
         <td>
           <form action="/delete/{{ task.id }}" method="post" style="display:inline;">
             <button class="btn btn-sm btn-danger" onclick="return confirm('Delete this task?')">🗑️</button>
@@ -122,7 +127,6 @@
   {% endif %}
 </div>
 
-<!-- 🧾 Modals (rendered separately outside the table for correctness) -->
 {% for task in tasks %}
 <div class="modal fade" id="editModal{{ task.id }}" tabindex="-1" aria-labelledby="editModalLabel{{ task.id }}" aria-hidden="true">
   <div class="modal-dialog">
@@ -163,7 +167,6 @@
 </div>
 {% endfor %}
 
-<!-- 📎 Footer -->
 <footer>
   <p>✨ Built by Naman | <a href="https://fastapi.tiangolo.com/" target="_blank">Powered by FastAPI</a></p>
 </footer>

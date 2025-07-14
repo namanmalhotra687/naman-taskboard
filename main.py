@@ -159,14 +159,36 @@ def add_item_json(item: ItemBase, db: Session = Depends(get_db)):
 
 @app.get("/items")
 def get_all_items(db: Session = Depends(get_db)):
-    return db.query(Item).all()
+    items = db.query(Item).all()
+    result = []
+    for item in items:
+        result.append({
+            "id": item.id,
+            "title": item.title,
+            "description": item.description,
+            "status": item.status,
+            "deadline": item.deadline,
+            "generated": item.generated,
+            "generated_at": item.generated_at.strftime("%Y-%m-%d %H:%M") if item.generated_at else None
+        })
+    return result
+
 
 @app.get("/items/{item_id}")
 def get_item(item_id: int, db: Session = Depends(get_db)):
     item = db.query(Item).filter(Item.id == item_id).first()
     if not item:
         raise HTTPException(status_code=404, detail="Item not found")
-    return item
+    
+    return {
+        "id": item.id,
+        "title": item.title,
+        "description": item.description,
+        "status": item.status,
+        "deadline": item.deadline,
+        "generated": item.generated,
+        "generated_at": item.generated_at.strftime("%Y-%m-%d %H:%M") if item.generated_at else None
+    }
 
 @app.put("/edit-json/{item_id}")
 def update_item(item_id: int, item: ItemUpdate, db: Session = Depends(get_db)):
@@ -193,7 +215,7 @@ def run_generator(request: Request, local_kw: str = Form(...)):
     get_current_user(request)
     db = SessionLocal()
     data = generate_task(local_kw)
-    item = Item(**data, generated=True)
+    item = Item(**data, generated=True, generated_at=datetime.utcnow())
     db.add(item)
     db.commit()
     db.close()
@@ -256,3 +278,72 @@ def dashboard(request: Request, db: Session = Depends(get_db)):
         "due_today": due_today,
         "future": future
     })
+
+from apscheduler.schedulers.background import BackgroundScheduler
+from generator_logic import generate_task
+from model import SessionLocal, Item
+from datetime import datetime
+
+def scheduled_task():
+    db = SessionLocal()
+    new_task = generate_task()
+    task = Item(**new_task)
+    db.add(task)
+    db.commit()
+    db.close()
+    print(f"✅ Auto Task Generated at {datetime.now()}")
+
+# Scheduler Setup
+scheduler = BackgroundScheduler()
+scheduler.add_job(scheduled_task, 'interval', minutes=30)  # Change to 5, 10, etc.
+scheduler.start()
+
+@app.get("/export")
+def export_csv(db: Session = Depends(get_db)):
+    items = db.query(Item).all()
+    output = io.StringIO()
+    writer = csv.writer(output)
+
+    # Header
+    writer.writerow(["ID", "Title", "Description", "Status", "Deadline", "Generated", "Generated At"])
+
+    # Data rows
+    for item in items:
+        writer.writerow([
+            item.id,
+            item.title,
+            item.description,
+            item.status,
+            item.deadline,
+            "Yes" if item.generated else "No",
+            item.generated_at.strftime("%Y-%m-%d %H:%M") if item.generated_at else ""
+        ])
+
+    output.seek(0)
+    return StreamingResponse(
+        output,
+        media_type="text/csv",
+        headers={"Content-Disposition": "attachment; filename=tasks.csv"}
+    )
+
+from apscheduler.schedulers.background import BackgroundScheduler
+from generator_logic import generate_task
+from model import SessionLocal, Item
+from datetime import date
+
+def auto_generate_task():
+    db = SessionLocal()
+    task = generate_task()
+    db.add(Item(
+        title=task["title"],
+        description=task["description"],
+        deadline=date.today(),
+        status="Pending",
+        generated=True
+    ))
+    db.commit()
+    db.close()
+
+scheduler = BackgroundScheduler()
+scheduler.add_job(auto_generate_task, "interval", minutes=10)  # Every 10 minutes
+scheduler.start()

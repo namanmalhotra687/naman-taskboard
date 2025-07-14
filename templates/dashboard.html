@@ -38,38 +38,38 @@
     <div class="col-md-4">
       <div class="card p-3 bg-success text-white">
         <h5>✅ Completed</h5>
-        <h2>{{ completed }}</h2>
+        <h2>{{ completed or 0 }}</h2>
       </div>
     </div>
     <div class="col-md-4">
       <div class="card p-3 bg-warning text-dark">
         <h5>🚧 In Progress</h5>
-        <h2>{{ in_progress }}</h2>
+        <h2>{{ in_progress or 0 }}</h2>
       </div>
     </div>
     <div class="col-md-4">
       <div class="card p-3 bg-secondary text-white">
         <h5>🕒 Pending</h5>
-        <h2>{{ pending }}</h2>
+        <h2>{{ pending or 0 }}</h2>
       </div>
     </div>
 
     <div class="col-md-4">
       <div class="card p-3 bg-danger text-white">
         <h5>⏰ Overdue</h5>
-        <h2>{{ overdue }}</h2>
+        <h2>{{ overdue or 0 }}</h2>
       </div>
     </div>
     <div class="col-md-4">
       <div class="card p-3 bg-info text-white">
         <h5>📅 Due Today</h5>
-        <h2>{{ due_today }}</h2>
+        <h2>{{ due_today or 0 }}</h2>
       </div>
     </div>
     <div class="col-md-4">
       <div class="card p-3 bg-light text-dark">
         <h5>📆 Future Tasks</h5>
-        <h2>{{ future }}</h2>
+        <h2>{{ future or 0 }}</h2>
       </div>
     </div>
   </div>
@@ -87,6 +87,11 @@
   <p>✨ Built by Naman | Powered by FastAPI + Chart.js</p>
 </footer>
 
+<!-- Inject JSON data as string -->
+<script>
+  const statusData = JSON.parse('{{ [completed|default(0), in_progress|default(0), pending|default(0)] | tojson | safe }}');
+</script>
+
 <script>
   const ctx = document.getElementById('statusChart').getContext('2d');
   const statusChart = new Chart(ctx, {
@@ -95,7 +100,7 @@
       labels: ['Completed', 'In Progress', 'Pending'],
       datasets: [{
         label: 'Task Status',
-        data: [{{ completed }}, {{ in_progress }}, {{ pending }}],
+        data: statusData,
         backgroundColor: ['#28a745', '#ffc107', '#6c757d']
       }]
     },
@@ -110,4 +115,4 @@
   });
 </script>
 </body>
-</html>     
+</html>
