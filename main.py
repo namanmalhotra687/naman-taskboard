@@ -62,7 +62,8 @@ def view_tasks(request: Request, db: Session = Depends(get_db)):
     if not user:
         return RedirectResponse(url="/login")
     tasks = db.query(Item).all()
-    return templates.TemplateResponse("home.html", {"request": request, "tasks": tasks})
+   return templates.TemplateResponse("view.html", {"request": request, "tasks": tasks})
+
 
 @app.post("/add")
 def add_task(request: Request,
