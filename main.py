@@ -49,12 +49,16 @@ def login_form(request: Request):
     return templates.TemplateResponse("login.html", {"request": request})
 
 @app.post("/login")
-def login(request: Request, username: str = Form(...), password: str = Form(...), db: Session = Depends(get_db)):
+async def login(request: Request, db: Session = Depends(get_db)):
+    form = await request.form()
+    username = form.get("username")
+    password = form.get("password")
     user = authenticate_user(db, username, password)
-    if not user:
-        raise HTTPException(status_code=401, detail="Invalid username or password")
-    login_user(request, user)
-    return RedirectResponse(url="/view", status_code=302)
+    if user:
+        login_user(request, user)
+        return RedirectResponse(url="/view", status_code=303)
+    else:
+        return templates.TemplateResponse("login.html", {"request": request, "error": "Invalid credentials"})
 
 @app.get("/logout")
 def logout(request: Request):
