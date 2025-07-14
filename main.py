@@ -43,13 +43,12 @@ async def login(request: Request, db: Session = Depends(get_db)):
     form = await request.form()
     username = form.get("username")
     password = form.get("password")
-    user = authenticate_user(db, username, password)  # ✅ db comes first
+    user = authenticate_user(db, username, password)
     if user:
         login_user(request, user)
         return RedirectResponse(url="/view", status_code=303)
     else:
         return templates.TemplateResponse("login.html", {"request": request, "error": "Invalid credentials"})
-
 
 @app.get("/logout")
 def logout(request: Request):
@@ -62,7 +61,7 @@ def view_tasks(request: Request, db: Session = Depends(get_db)):
     if not user:
         return RedirectResponse(url="/login")
     tasks = db.query(Item).all()
-   return templates.TemplateResponse("view.html", {"request": request, "tasks": tasks})
+    return templates.TemplateResponse("view.html", {"request": request, "tasks": tasks})
 
 
 @app.post("/add")
