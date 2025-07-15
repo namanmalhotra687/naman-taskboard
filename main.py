@@ -4,11 +4,10 @@ from fastapi.templating import Jinja2Templates
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.sessions import SessionMiddleware
 from sqlalchemy.orm import Session
-from datetime import date, datetime, timedelta
-from collections import defaultdict
+from datetime import date, timedelta, datetime
+from typing import List
 import csv
 import io
-from typing import List
 
 from model import Base, engine, SessionLocal, Item, User
 from schemas import ItemBase, ItemUpdate
@@ -19,18 +18,14 @@ from apscheduler.schedulers.background import BackgroundScheduler
 
 app = FastAPI()
 
-# -------------------- MIDDLEWARES --------------------
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+# CORS & session middleware
+app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
 app.add_middleware(SessionMiddleware, secret_key="your-secret-key")
+
+# Templates
 templates = Jinja2Templates(directory="templates")
 
-# -------------------- DATABASE --------------------
+# Database setup
 Base.metadata.create_all(bind=engine)
 def get_db():
     db = SessionLocal()
@@ -39,7 +34,7 @@ def get_db():
     finally:
         db.close()
 
-# -------------------- AUTH --------------------
+# ---------------- AUTH ----------------
 @app.get("/")
 def root():
     return RedirectResponse(url="/login")
@@ -51,7 +46,9 @@ def login_form(request: Request):
 @app.post("/login")
 async def login(request: Request, db: Session = Depends(get_db)):
     form = await request.form()
-    user = authenticate_user(db, form.get("username"), form.get("password"))
+    username = form.get("username")
+    password = form.get("password")
+    user = authenticate_user(db, username, password)
     if user:
         login_user(request, user)
         return RedirectResponse(url="/view", status_code=303)
@@ -62,31 +59,37 @@ def logout(request: Request):
     logout_user(request)
     return RedirectResponse(url="/login")
 
-# -------------------- FORM ROUTES --------------------
+# ---------------- HTML ROUTES ----------------
 @app.get("/view", response_class=HTMLResponse)
-def view_page(request: Request, db: Session = Depends(get_db)):
-    items = db.query(Item).all()
+def view_items(request: Request, tag: str = None, db: Session = Depends(get_db)):
+    query = db.query(Item)
+    if tag:
+        query = query.filter(Item.tag == tag)
+    items = query.all()
     return templates.TemplateResponse("view.html", {"request": request, "items": items})
 
+@app.get("/dashboard", response_class=HTMLResponse)
+def dashboard(request: Request, db: Session = Depends(get_db)):
+    items = db.query(Item).all()
+    return templates.TemplateResponse("dashboard.html", {"request": request, "items": items})
+
 @app.post("/add")
-def add_item(
-    request: Request,
-    title: str = Form(...),
-    description: str = Form(...),
-    status: str = Form(...),
-    deadline: date = Form(...),
-    category: str = Form(...),
-    recurrence: str = Form("none"),
-    db: Session = Depends(get_db),
-):
-    item = Item(title=title, description=description, status=status, deadline=deadline,
-                category=category, recurrence=recurrence)
-    db.add(item)
+def add_task(request: Request,
+             title: str = Form(...),
+             description: str = Form(...),
+             status: str = Form(...),
+             deadline: date = Form(...),
+             category: str = Form(...),
+             recurrence: str = Form("none"),
+             db: Session = Depends(get_db)):
+    new_item = Item(title=title, description=description, status=status,
+                    deadline=deadline, category=category, recurrence=recurrence)
+    db.add(new_item)
     db.commit()
-    return RedirectResponse(url="/view", status_code=303)
+    return RedirectResponse(url="/view", status_code=302)
 
 @app.post("/edit/{item_id}")
-def edit_item(item_id: int,
+def edit_task(item_id: int,
               title: str = Form(...),
               description: str = Form(...),
               status: str = Form(...),
@@ -103,7 +106,7 @@ def edit_item(item_id: int,
         task.category = category
         task.recurrence = recurrence
         db.commit()
-    return RedirectResponse(url="/view", status_code=303)
+    return RedirectResponse(url="/view", status_code=302)
 
 @app.get("/delete/{item_id}")
 def delete_item(item_id: int, db: Session = Depends(get_db)):
@@ -114,13 +117,12 @@ def delete_item(item_id: int, db: Session = Depends(get_db)):
     db.commit()
     return RedirectResponse(url="/view", status_code=303)
 
+# ---------------- BULK ACTION ----------------
 @app.post("/bulk-action")
-def bulk_action(
-    request: Request,
-    item_ids: List[int] = Form(...),
-    action: str = Form(...),
-    db: Session = Depends(get_db),
-):
+def bulk_action(request: Request,
+                item_ids: List[int] = Form(...),
+                action: str = Form(...),
+                db: Session = Depends(get_db)):
     if action == "delete":
         db.query(Item).filter(Item.id.in_(item_ids)).delete(synchronize_session=False)
     elif action == "complete":
@@ -128,10 +130,11 @@ def bulk_action(
     db.commit()
     return RedirectResponse(url="/view", status_code=303)
 
-# -------------------- JSON ROUTES --------------------
+# ---------------- JSON ROUTES ----------------
 @app.post("/add-json", status_code=status.HTTP_201_CREATED)
 def add_json(item: ItemBase, db: Session = Depends(get_db)):
     try:
+        print("📩 Received JSON:", item.dict())
         item_data = item.dict()
         if isinstance(item_data["deadline"], str):
             item_data["deadline"] = datetime.strptime(item_data["deadline"], "%Y-%m-%d").date()
@@ -139,8 +142,11 @@ def add_json(item: ItemBase, db: Session = Depends(get_db)):
         db.add(new_item)
         db.commit()
         db.refresh(new_item)
+        print("✅ Task inserted with ID:", new_item.id)
         return {"message": "Task added", "id": new_item.id}
     except Exception as e:
+        import traceback
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Server Error: {str(e)}")
 
 @app.put("/edit-json/{item_id}")
@@ -162,16 +168,7 @@ def delete_json(item_id: int, db: Session = Depends(get_db)):
     db.commit()
     return {"message": "Task deleted"}
 
-# -------------------- GENERATOR --------------------
-@app.post("/generate")
-def generate_from_mvp(local_kw: str = Form(""), db: Session = Depends(get_db)):
-    generated = generate_task(local_kw)
-    new_item = Item(**generated)
-    db.add(new_item)
-    db.commit()
-    return RedirectResponse(url="/view", status_code=302)
-
-# -------------------- CSV EXPORT --------------------
+# ---------------- EXPORT ----------------
 @app.get("/export")
 def export_csv(db: Session = Depends(get_db)):
     items = db.query(Item).all()
@@ -183,19 +180,16 @@ def export_csv(db: Session = Depends(get_db)):
     output.seek(0)
     return StreamingResponse(output, media_type="text/csv", headers={"Content-Disposition": "attachment; filename=tasks.csv"})
 
-# -------------------- DASHBOARD --------------------
-@app.get("/dashboard", response_class=HTMLResponse)
-def dashboard(request: Request, db: Session = Depends(get_db)):
-    items = db.query(Item).all()
-    status_count = defaultdict(int)
-    for item in items:
-        status_count[item.status] += 1
-    return templates.TemplateResponse("dashboard.html", {
-        "request": request,
-        "status_count": dict(status_count)
-    })
+# ---------------- GENERATE ----------------
+@app.post("/generate")
+def generate_from_mvp(local_kw: str = Form(""), db: Session = Depends(get_db)):
+    generated = generate_task(local_kw)
+    new_item = Item(**generated)
+    db.add(new_item)
+    db.commit()
+    return RedirectResponse(url="/view", status_code=302)
 
-# -------------------- BACKGROUND TASKS --------------------
+# ---------------- SCHEDULER ----------------
 def handle_recurring_tasks():
     db = SessionLocal()
     today = date.today()
@@ -226,13 +220,12 @@ def send_task_reminders():
     tomorrow = today + timedelta(days=1)
     tasks = db.query(Item).filter(Item.deadline.in_([today, tomorrow])).all()
     if not tasks:
+        print("📭 No tasks to remind today.")
         return
     recipient = "youremail@example.com"
     for task in tasks:
         subject = f"⏰ Reminder: {task.title} due on {task.deadline}"
-        body = (
-            f"Task: {task.title}\nDescription: {task.description}\nDeadline: {task.deadline}\n"
-        )
+        body = f"Task: {task.title}\nDescription: {task.description}\nDeadline: {task.deadline}"
         send_email(recipient, subject, body)
     db.close()
 
